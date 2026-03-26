@@ -987,6 +987,9 @@ footer {
 <footer>&copy; 2026 LUMIÈRE</footer>
 
 <script>
+// ★★★ ここにGASのデプロイURLを貼り付けてください ★★★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw3LCcgxh70-Xq6DBilUlFfUHFrc6S7nSGhZyaJYEolRehGNIvAH6MxvNDBxFIv--Ae/exec';
+
 const stores = [
   { id:1, name:'表参道店', area:'港区', badge:'Flagship' },
   { id:2, name:'恵比寿店', area:'渋谷区', badge:'' },
@@ -1015,10 +1018,27 @@ const today = new Date();
 calYear = today.getFullYear();
 calMonth = today.getMonth();
 
-function init() {
-  renderStoreChips();
+async function init() {
   renderCalendar();
-  selectStore(stores[0].id);
+  try {
+    const res = await fetch(GAS_URL + '?action=stores');
+    const data = await res.json();
+    stores.length = 0;
+    data.stores.forEach(s => {
+      stores.push({ id: s.store_id, name: s.store_name, area: s.area, badge: s.badge || '' });
+    });
+  } catch (e) {
+    console.log('GAS未接続: 静的データで動作します');
+  }
+  renderStoreChips();
+  if (stores.length > 0) selectStore(stores[0].id);
+}
+
+function formatDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
 }
 
 function renderStoreChips() {
@@ -1088,39 +1108,57 @@ function selectDate(y, m, d) {
   }
 }
 
-function getAvailability(slot, date, store) {
-  const hash = (slot.charCodeAt(0)*31 + slot.charCodeAt(3)*17 + date.getDate()*13 + store.id*7) % 10;
-  if (hash < 2) return 'unavailable';
-  if (hash < 4) return 'few';
-  return 'available';
-}
-
-function renderTimeSlots() {
+async function renderTimeSlots() {
   if (!selectedDate || !selectedStore) return;
+  const dateStr = formatDateStr(selectedDate);
   const opts = { month:'long', day:'numeric', weekday:'short' };
   document.getElementById('timeDate').textContent = selectedDate.toLocaleDateString('ja-JP', opts);
-  document.getElementById('timeSub').textContent = `${selectedStore.name}の空き状況`;
-
+  document.getElementById('timeSub').textContent = '読み込み中...';
   document.getElementById('timeEmpty').style.display = 'none';
   const grid = document.getElementById('timeGrid');
-  grid.style.display = 'grid';
+  grid.style.display = 'none';
 
-  grid.innerHTML = allSlots.map(slot => {
-    const avail = getAvailability(slot, selectedDate, selectedStore);
-    const isSel = selectedTime === slot;
-    let cls = 'time-slot';
-    if (avail === 'unavailable') cls += ' unavailable';
-    if (avail === 'few') cls += ' few';
-    if (isSel) cls += ' selected';
+  try {
+    const res = await fetch(GAS_URL + '?action=slots&store_id=' + selectedStore.id + '&date=' + dateStr);
+    const data = await res.json();
 
-    const statusText = avail === 'unavailable' ? '✕' : avail === 'few' ? '残少' : '◎';
-    const handler = avail === 'unavailable' ? '' : `onclick="selectTime('${slot}')"`;
+    if (data.closed) {
+      document.getElementById('timeSub').textContent = '定休日です';
+      document.getElementById('timeEmpty').style.display = 'block';
+      document.getElementById('timeEmpty').innerHTML = '定休日のため<br>予約を受け付けておりません';
+      return;
+    }
 
-    return `<button class="${cls}" ${handler}>
-      ${slot}
-      <span class="slot-status">${statusText}</span>
-    </button>`;
-  }).join('');
+    document.getElementById('timeSub').textContent = selectedStore.name + 'の空き状況';
+    grid.style.display = 'grid';
+    grid.innerHTML = data.slots.map(function(slot) {
+      var isSel = selectedTime === slot.time;
+      var cls = 'time-slot';
+      if (slot.status === 'unavailable') cls += ' unavailable';
+      if (slot.status === 'few') cls += ' few';
+      if (isSel) cls += ' selected';
+      var statusText = slot.status === 'unavailable' ? '✕' : slot.status === 'few' ? '残少' : '◎';
+      var handler = slot.status === 'unavailable' ? '' : 'onclick="selectTime(\'' + slot.time + '\')"';
+      return '<button class="' + cls + '" ' + handler + '>' + slot.time + '<span class="slot-status">' + statusText + '</span></button>';
+    }).join('');
+  } catch (e) {
+    console.error('空き枠取得エラー:', e);
+    document.getElementById('timeSub').textContent = selectedStore.name + 'の空き状況';
+    grid.style.display = 'grid';
+    var allSlots = ['10:00','10:30','11:00','11:30','12:00','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30'];
+    grid.innerHTML = allSlots.map(function(slot) {
+      var hash = (slot.charCodeAt(0)*31 + slot.charCodeAt(3)*17 + selectedDate.getDate()*13 + selectedStore.id*7) % 10;
+      var avail = hash < 2 ? 'unavailable' : hash < 4 ? 'few' : 'available';
+      var isSel = selectedTime === slot;
+      var cls = 'time-slot';
+      if (avail === 'unavailable') cls += ' unavailable';
+      if (avail === 'few') cls += ' few';
+      if (isSel) cls += ' selected';
+      var statusText = avail === 'unavailable' ? '✕' : avail === 'few' ? '残少' : '◎';
+      var handler = avail === 'unavailable' ? '' : 'onclick="selectTime(\'' + slot + '\')"';
+      return '<button class="' + cls + '" ' + handler + '>' + slot + '<span class="slot-status">' + statusText + '</span></button>';
+    }).join('');
+  }
 }
 
 function selectTime(t) {
@@ -1182,7 +1220,7 @@ function selectType(btn) {
   bookingType = btn.dataset.type;
 }
 
-function submitBooking() {
+async function submitBooking() {
   const name = document.getElementById('fName').value;
   const phone = document.getElementById('fPhone').value;
   const email = document.getElementById('fEmail').value;
@@ -1192,24 +1230,75 @@ function submitBooking() {
     return;
   }
 
-  const isTentative = bookingType === 'tentative';
-  document.getElementById('successTitle').textContent =
-    isTentative ? '仮予約を承りました' : 'ご予約が確定しました';
-  document.getElementById('successMsg').innerHTML =
-    isTentative
-      ? 'ご予約ありがとうございます。<br>担当者よりお電話いたします。'
-      : 'ご予約ありがとうございます。<br>確認メールをお送りしました。';
+  const submitBtn = document.querySelector('.btn-submit');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = '送信中...';
+  submitBtn.disabled = true;
 
-  const opts = { month:'long', day:'numeric', weekday:'short' };
-  document.getElementById('successDetail').innerHTML = `
-    <div class="success-row"><span>店舗</span><span>${selectedStore.name}</span></div>
-    <div class="success-row"><span>日時</span><span>${selectedDate.toLocaleDateString('ja-JP', opts)} ${selectedTime}</span></div>
-    <div class="success-row"><span>お名前</span><span>${name}</span></div>
-    <div class="success-row"><span>種別</span><span>${isTentative ? '仮予約' : '本予約'}</span></div>
-  `;
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'reserve',
+        store_id: selectedStore.id,
+        date: formatDateStr(selectedDate),
+        time: selectedTime,
+        name: name,
+        phone: phone,
+        email: email,
+        menu: document.getElementById('fMenu').value,
+        note: document.getElementById('fNote') ? document.getElementById('fNote').value : '',
+        type: bookingType === 'tentative' ? '仮予約' : '本予約'
+      })
+    });
 
-  document.getElementById('sheetForm').style.display = 'none';
-  document.getElementById('sheetSuccess').style.display = '';
+    const data = await res.json();
+
+    if (data.success) {
+      const isTentative = data.type === '仮予約';
+      document.getElementById('successTitle').textContent =
+        isTentative ? '仮予約を承りました' : 'ご予約が確定しました';
+      document.getElementById('successMsg').innerHTML =
+        isTentative
+          ? 'ご予約ありがとうございます。<br>担当者よりお電話いたします。'
+          : 'ご予約ありがとうございます。<br>確認メールをお送りしました。';
+
+      const opts = { month:'long', day:'numeric', weekday:'short' };
+      document.getElementById('successDetail').innerHTML =
+        '<div class="success-row"><span>予約番号</span><span>' + data.reservation_id + '</span></div>' +
+        '<div class="success-row"><span>店舗</span><span>' + selectedStore.name + '</span></div>' +
+        '<div class="success-row"><span>日時</span><span>' + selectedDate.toLocaleDateString('ja-JP', opts) + ' ' + selectedTime + '</span></div>' +
+        '<div class="success-row"><span>お名前</span><span>' + name + '</span></div>' +
+        '<div class="success-row"><span>種別</span><span>' + data.type + '</span></div>';
+
+      document.getElementById('sheetForm').style.display = 'none';
+      document.getElementById('sheetSuccess').style.display = '';
+    } else {
+      alert(data.error || '予約に失敗しました。');
+    }
+  } catch (e) {
+    console.error('予約送信エラー:', e);
+    // GAS未接続時はフォールバック（デモ動作）
+    const isTentative = bookingType === 'tentative';
+    document.getElementById('successTitle').textContent =
+      isTentative ? '仮予約を承りました' : 'ご予約が確定しました';
+    document.getElementById('successMsg').innerHTML =
+      isTentative
+        ? 'ご予約ありがとうございます。<br>担当者よりお電話いたします。'
+        : 'ご予約ありがとうございます。<br>確認メールをお送りしました。';
+    const opts = { month:'long', day:'numeric', weekday:'short' };
+    document.getElementById('successDetail').innerHTML =
+      '<div class="success-row"><span>店舗</span><span>' + selectedStore.name + '</span></div>' +
+      '<div class="success-row"><span>日時</span><span>' + selectedDate.toLocaleDateString('ja-JP', opts) + ' ' + selectedTime + '</span></div>' +
+      '<div class="success-row"><span>お名前</span><span>' + name + '</span></div>' +
+      '<div class="success-row"><span>種別</span><span>' + (isTentative ? '仮予約' : '本予約') + '</span></div>';
+    document.getElementById('sheetForm').style.display = 'none';
+    document.getElementById('sheetSuccess').style.display = '';
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
 }
 
 function resetBooking() {
