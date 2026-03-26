@@ -911,7 +911,7 @@ footer {
     <div class="bar-store" id="barStore"></div>
     <div class="bar-datetime" id="barDateTime"></div>
   </div>
-  <button class="bar-btn" onclick="openSheet()">予約する</button>
+  <button class="bar-btn" onclick="openSheet()">仮予約に進む</button>
 </div>
 
 <!-- BOTTOM SHEET OVERLAY -->
@@ -922,20 +922,16 @@ footer {
   <div class="sheet-handle" onclick="closeSheet()"></div>
 
   <div id="sheetForm">
-    <div class="sheet-title">ご予約情報</div>
+    <div class="sheet-title">仮予約</div>
     <div class="sheet-sub">内容をご確認の上、情報をご入力ください</div>
 
     <div class="sheet-summary" id="sheetSummary"></div>
 
-    <div class="type-toggle">
-      <button class="type-btn selected" data-type="tentative" onclick="selectType(this)">
-        <div class="type-btn-name">仮予約</div>
-        <div class="type-btn-desc">お電話で最終確認</div>
-      </button>
-      <button class="type-btn" data-type="confirmed" onclick="selectType(this)">
-        <div class="type-btn-name">本予約</div>
-        <div class="type-btn-desc">即時確定</div>
-      </button>
+    <div style="background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:1.2rem;display:flex;align-items:flex-start;gap:8px;">
+      <span style="font-size:18px;line-height:1;flex-shrink:0;margin-top:1px;">&#9742;</span>
+      <div style="font-size:0.75rem;color:var(--text-light);line-height:1.7;">
+        仮予約後、<strong style="color:var(--text);font-weight:500;">担当スタッフよりお電話にてご連絡</strong>いたします。お電話での確認をもって予約確定となります。
+      </div>
     </div>
 
     <div class="form-row">
@@ -966,7 +962,7 @@ footer {
     </div>
 
     <div class="sheet-actions">
-      <button class="btn-submit" onclick="submitBooking()">予約を確定する</button>
+      <button class="btn-submit" onclick="submitBooking()">仮予約を確定する</button>
       <button class="btn-close" onclick="closeSheet()">戻る</button>
     </div>
   </div>
@@ -1249,20 +1245,16 @@ async function submitBooking() {
         email: email,
         menu: document.getElementById('fMenu').value,
         note: document.getElementById('fNote') ? document.getElementById('fNote').value : '',
-        type: bookingType === 'tentative' ? '仮予約' : '本予約'
+        type: '仮予約'
       })
     });
 
     const data = await res.json();
 
     if (data.success) {
-      const isTentative = data.type === '仮予約';
-      document.getElementById('successTitle').textContent =
-        isTentative ? '仮予約を承りました' : 'ご予約が確定しました';
+      document.getElementById('successTitle').textContent = '仮予約を承りました';
       document.getElementById('successMsg').innerHTML =
-        isTentative
-          ? 'ご予約ありがとうございます。<br>担当者よりお電話いたします。'
-          : 'ご予約ありがとうございます。<br>確認メールをお送りしました。';
+        'ご予約ありがとうございます。<br><strong>担当スタッフよりお電話にてご連絡</strong>いたします。<br>お電話での確認をもって予約確定となります。';
 
       const opts = { month:'long', day:'numeric', weekday:'short' };
       document.getElementById('successDetail').innerHTML =
@@ -1270,7 +1262,7 @@ async function submitBooking() {
         '<div class="success-row"><span>店舗</span><span>' + selectedStore.name + '</span></div>' +
         '<div class="success-row"><span>日時</span><span>' + selectedDate.toLocaleDateString('ja-JP', opts) + ' ' + selectedTime + '</span></div>' +
         '<div class="success-row"><span>お名前</span><span>' + name + '</span></div>' +
-        '<div class="success-row"><span>種別</span><span>' + data.type + '</span></div>';
+        '<div class="success-row"><span>状態</span><span>お電話での確認待ち</span></div>';
 
       document.getElementById('sheetForm').style.display = 'none';
       document.getElementById('sheetSuccess').style.display = '';
@@ -1280,19 +1272,15 @@ async function submitBooking() {
   } catch (e) {
     console.error('予約送信エラー:', e);
     // GAS未接続時はフォールバック（デモ動作）
-    const isTentative = bookingType === 'tentative';
-    document.getElementById('successTitle').textContent =
-      isTentative ? '仮予約を承りました' : 'ご予約が確定しました';
+    document.getElementById('successTitle').textContent = '仮予約を承りました';
     document.getElementById('successMsg').innerHTML =
-      isTentative
-        ? 'ご予約ありがとうございます。<br>担当者よりお電話いたします。'
-        : 'ご予約ありがとうございます。<br>確認メールをお送りしました。';
+      'ご予約ありがとうございます。<br><strong>担当スタッフよりお電話にてご連絡</strong>いたします。<br>お電話での確認をもって予約確定となります。';
     const opts = { month:'long', day:'numeric', weekday:'short' };
     document.getElementById('successDetail').innerHTML =
       '<div class="success-row"><span>店舗</span><span>' + selectedStore.name + '</span></div>' +
       '<div class="success-row"><span>日時</span><span>' + selectedDate.toLocaleDateString('ja-JP', opts) + ' ' + selectedTime + '</span></div>' +
       '<div class="success-row"><span>お名前</span><span>' + name + '</span></div>' +
-      '<div class="success-row"><span>種別</span><span>' + (isTentative ? '仮予約' : '本予約') + '</span></div>';
+      '<div class="success-row"><span>状態</span><span>お電話での確認待ち</span></div>';
     document.getElementById('sheetForm').style.display = 'none';
     document.getElementById('sheetSuccess').style.display = '';
   } finally {
