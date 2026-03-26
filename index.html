@@ -1232,23 +1232,20 @@ async function submitBooking() {
   submitBtn.disabled = true;
 
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'reserve',
-        store_id: selectedStore.id,
-        date: formatDateStr(selectedDate),
-        time: selectedTime,
-        name: name,
-        phone: phone,
-        email: email,
-        menu: document.getElementById('fMenu').value,
-        note: document.getElementById('fNote') ? document.getElementById('fNote').value : '',
-        type: '仮予約'
-      })
+    const params = new URLSearchParams({
+      action: 'reserve',
+      store_id: selectedStore.id,
+      date: formatDateStr(selectedDate),
+      time: selectedTime,
+      name: name,
+      phone: phone,
+      email: email,
+      menu: document.getElementById('fMenu').value,
+      note: document.getElementById('fNote') ? document.getElementById('fNote').value : '',
+      type: '仮予約'
     });
 
+    const res = await fetch(GAS_URL + '?' + params.toString());
     const data = await res.json();
 
     if (data.success) {
