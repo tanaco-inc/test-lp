@@ -911,7 +911,7 @@ footer {
     <div class="bar-store" id="barStore"></div>
     <div class="bar-datetime" id="barDateTime"></div>
   </div>
-  <button class="bar-btn" onclick="openSheet()">仮予約に進む</button>
+  <button class="bar-btn" onclick="openSheet()">予約に進む</button>
 </div>
 
 <!-- BOTTOM SHEET OVERLAY -->
@@ -922,17 +922,10 @@ footer {
   <div class="sheet-handle" onclick="closeSheet()"></div>
 
   <div id="sheetForm">
-    <div class="sheet-title">仮予約</div>
+    <div class="sheet-title">ご予約</div>
     <div class="sheet-sub">内容をご確認の上、情報をご入力ください</div>
 
     <div class="sheet-summary" id="sheetSummary"></div>
-
-    <div style="background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:1.2rem;display:flex;align-items:flex-start;gap:8px;">
-      <span style="font-size:18px;line-height:1;flex-shrink:0;margin-top:1px;">&#9742;</span>
-      <div style="font-size:0.75rem;color:var(--text-light);line-height:1.7;">
-        仮予約後、<strong style="color:var(--text);font-weight:500;">担当スタッフよりお電話にてご連絡</strong>いたします。お電話での確認をもって予約確定となります。
-      </div>
-    </div>
 
     <div class="form-row">
       <div class="form-group">
@@ -962,7 +955,7 @@ footer {
     </div>
 
     <div class="sheet-actions">
-      <button class="btn-submit" onclick="submitBooking()">仮予約を確定する</button>
+      <button class="btn-submit" onclick="submitBooking()">予約を確定する</button>
       <button class="btn-close" onclick="closeSheet()">戻る</button>
     </div>
   </div>
@@ -1242,16 +1235,16 @@ async function submitBooking() {
       email: email,
       menu: document.getElementById('fMenu').value,
       note: document.getElementById('fNote') ? document.getElementById('fNote').value : '',
-      type: '仮予約'
+      type: '予約確定'
     });
 
     const res = await fetch(GAS_URL + '?' + params.toString());
     const data = await res.json();
 
     if (data.success) {
-      document.getElementById('successTitle').textContent = '仮予約を承りました';
+      document.getElementById('successTitle').textContent = 'ご予約が完了しました';
       document.getElementById('successMsg').innerHTML =
-        'ご予約ありがとうございます。<br><strong>担当スタッフよりお電話にてご連絡</strong>いたします。<br>お電話での確認をもって予約確定となります。';
+        'ご予約ありがとうございます。<br>確認メールをお送りしましたのでご確認ください。';
 
       const opts = { month:'long', day:'numeric', weekday:'short' };
       document.getElementById('successDetail').innerHTML =
@@ -1259,7 +1252,7 @@ async function submitBooking() {
         '<div class="success-row"><span>店舗</span><span>' + selectedStore.name + '</span></div>' +
         '<div class="success-row"><span>日時</span><span>' + selectedDate.toLocaleDateString('ja-JP', opts) + ' ' + selectedTime + '</span></div>' +
         '<div class="success-row"><span>お名前</span><span>' + name + '</span></div>' +
-        '<div class="success-row"><span>状態</span><span>お電話での確認待ち</span></div>';
+        '<div class="success-row"><span>状態</span><span>予約確定</span></div>';
 
       document.getElementById('sheetForm').style.display = 'none';
       document.getElementById('sheetSuccess').style.display = '';
@@ -1269,15 +1262,15 @@ async function submitBooking() {
   } catch (e) {
     console.error('予約送信エラー:', e);
     // GAS未接続時はフォールバック（デモ動作）
-    document.getElementById('successTitle').textContent = '仮予約を承りました';
+    document.getElementById('successTitle').textContent = 'ご予約が完了しました';
     document.getElementById('successMsg').innerHTML =
-      'ご予約ありがとうございます。<br><strong>担当スタッフよりお電話にてご連絡</strong>いたします。<br>お電話での確認をもって予約確定となります。';
+      'ご予約ありがとうございます。<br>確認メールをお送りしましたのでご確認ください。';
     const opts = { month:'long', day:'numeric', weekday:'short' };
     document.getElementById('successDetail').innerHTML =
       '<div class="success-row"><span>店舗</span><span>' + selectedStore.name + '</span></div>' +
       '<div class="success-row"><span>日時</span><span>' + selectedDate.toLocaleDateString('ja-JP', opts) + ' ' + selectedTime + '</span></div>' +
       '<div class="success-row"><span>お名前</span><span>' + name + '</span></div>' +
-      '<div class="success-row"><span>状態</span><span>お電話での確認待ち</span></div>';
+      '<div class="success-row"><span>状態</span><span>予約確定</span></div>';
     document.getElementById('sheetForm').style.display = 'none';
     document.getElementById('sheetSuccess').style.display = '';
   } finally {
